@@ -40,6 +40,11 @@ input[type=number] { width:100%; border:1px solid #dfe2e7; border-radius:9px; pa
 input[type=number]:focus { outline:2px solid #dfe2e7; }
 .principle { background:#1d2025; color:#fff; }
 .principle .eyebrow, .principle p:last-child { color:#b7bbc2; }
+.history-list { display:grid; gap:0; }
+.history-row { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #eef0f2; font-size:13px; }
+.history-row:last-child { border-bottom:0; }
+.history-row strong { min-width:42px; text-align:right; font-size:13px; }
+.history-row small { color:#8a9098; min-width:48px; text-align:right; }
 .reset { background:transparent; color:#8a9098; border:1px solid #dfe2e7; font-size:12px; }
 .reset:hover { background:#fff; color:#343840; }
 @media (max-width:760px) { .header,.grid { grid-template-columns:1fr; display:grid; } .stats { grid-template-columns:1fr 1fr; } .stat.wide { grid-column:1 / -1; } .score { text-align:left; } h1 { font-size:28px; } }
