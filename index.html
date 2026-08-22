@@ -10,7 +10,7 @@
   <main class="app">
     <header class="header">
       <div>
-        <p class="eyebrow">LIFE OS / V0.4</p>
+        <p class="eyebrow">LIFE OS / V0.5</p>
         <h1>万事归位，各行其道</h1>
         <p id="date"></p>
       </div>
@@ -21,6 +21,24 @@
       <div class="stat"><span>已完成</span><strong id="completedCount">0/8</strong></div>
       <div class="stat"><span>连续满完成</span><strong id="streak">0</strong><small>天</small></div>
       <div class="stat wide"><span>今日进度</span><div class="progress"><i id="progressBar"></i></div></div>
+    </section>
+
+    <section class="dashboard">
+      <div class="card dashboard-card">
+        <div class="card-title"><h2>执行趋势</h2><span>最近 7 / 30 天</span></div>
+        <div class="range-buttons"><button class="range active" data-days="7">7 天</button><button class="range" data-days="30">30 天</button></div>
+        <div id="trendChart" class="trend-chart"></div>
+      </div>
+
+      <div class="card dashboard-card">
+        <div class="card-title"><h2>核心指标</h2><span id="summaryRange">最近 7 天</span></div>
+        <div class="metric-grid">
+          <div><span>平均完成率</span><strong id="avgRate">—</strong></div>
+          <div><span>平均阅读</span><strong id="avgReading">—</strong></div>
+          <div><span>平均手机</span><strong id="avgPhone">—</strong></div>
+          <div><span>平均睡眠</span><strong id="avgSleep">—</strong></div>
+        </div>
+      </div>
     </section>
 
     <section class="grid">
@@ -46,7 +64,7 @@
           <h2>洗衣论</h2>
           <p>先做眼前该做的事。行动优先，思考服务于行动。</p>
         </div>
-        <div class="card history-card">
+        <div class="card">
           <div class="card-title"><h2>历史执行</h2><span>最近 7 天</span></div>
           <div id="historyList" class="history-list"></div>
         </div>
