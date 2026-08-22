@@ -23,6 +23,10 @@ function toDateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+function getRecord(date) {
+  return history[toDateKey(date)] || null;
+}
+
 function save() {
   localStorage.setItem(key, JSON.stringify(saved));
   const all = [...saved.fixed, ...saved.extra];
@@ -42,6 +46,7 @@ function renderTasks() {
   saved.extra.forEach((task, index) => extraEl.appendChild(createTaskRow(task, true, index)));
   updateRate();
   renderHistory();
+  renderDashboard(currentDays);
 }
 
 function createTaskRow(task, isExtra, index) {
@@ -99,8 +104,8 @@ function calculateStreak() {
   let streak = 0;
   const cursor = new Date(today);
   while (true) {
-    const d = toDateKey(cursor);
-    if (!history[d] || history[d].rate < 100) break;
+    const record = getRecord(cursor);
+    if (!record || record.rate < 100) break;
     streak++;
     cursor.setDate(cursor.getDate() - 1);
   }
@@ -113,8 +118,7 @@ function renderHistory() {
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const keyDate = toDateKey(d);
-    const item = history[keyDate];
+    const item = getRecord(d);
     const row = document.createElement('div');
     row.className = 'history-row';
     const label = document.createElement('span');
@@ -126,6 +130,54 @@ function renderHistory() {
     row.append(label, value, detail);
     el.appendChild(row);
   }
+}
+
+let currentDays = 7;
+
+function collectRecords(days) {
+  const records = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    records.push({ date: d, record: getRecord(d) });
+  }
+  return records;
+}
+
+function average(values) {
+  const valid = values.filter(v => Number.isFinite(v));
+  return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
+}
+
+function renderDashboard(days) {
+  currentDays = days;
+  const records = collectRecords(days);
+  const rates = records.map(x => x.record?.rate).filter(Number.isFinite);
+  const readings = records.map(x => Number(x.record?.metrics?.reading)).filter(Number.isFinite);
+  const phones = records.map(x => Number(x.record?.metrics?.phone)).filter(Number.isFinite);
+  const sleeps = records.map(x => Number(x.record?.metrics?.sleep)).filter(Number.isFinite);
+
+  document.querySelector('#summaryRange').textContent = `最近 ${days} 天`;
+  document.querySelector('#avgRate').textContent = average(rates) === null ? '—' : Math.round(average(rates)) + '%';
+  document.querySelector('#avgReading').textContent = average(readings) === null ? '—' : average(readings).toFixed(1) + 'h';
+  document.querySelector('#avgPhone').textContent = average(phones) === null ? '—' : average(phones).toFixed(1) + 'h';
+  document.querySelector('#avgSleep').textContent = average(sleeps) === null ? '—' : average(sleeps).toFixed(1) + 'h';
+
+  const chart = document.querySelector('#trendChart');
+  chart.innerHTML = '';
+  const maxRate = 100;
+  records.forEach(({ date, record }) => {
+    const column = document.createElement('div');
+    column.className = 'chart-column';
+    const bar = document.createElement('div');
+    bar.className = 'chart-bar';
+    bar.style.height = `${record ? Math.max(record.rate, 4) : 4}%`;
+    bar.title = record ? `${toDateKey(date)}：${record.rate}%` : `${toDateKey(date)}：未记录`;
+    const label = document.createElement('small');
+    label.textContent = days <= 7 ? (date.getMonth() + 1) + '/' + date.getDate() : (date.getDate());
+    column.append(bar, label);
+    chart.appendChild(column);
+  });
 }
 
 document.querySelector('#addTask').addEventListener('click', () => {
@@ -144,6 +196,15 @@ document.querySelector('#addTask').addEventListener('click', () => {
     saved.metrics[id] = input.value;
     save();
     renderHistory();
+    renderDashboard(currentDays);
+  });
+});
+
+document.querySelectorAll('.range').forEach(button => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('.range').forEach(b => b.classList.remove('active'));
+    button.classList.add('active');
+    renderDashboard(Number(button.dataset.days));
   });
 });
 
