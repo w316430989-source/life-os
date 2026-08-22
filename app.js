@@ -2,224 +2,41 @@ const fixedDefaults = [
   '7:00 起床', '送孩子上学', '到店开始工作', '完成今日核心工作',
   '20 分钟散步', '阅读 1 小时', '控制短视频时间', '23:30 睡觉'
 ];
-
+const programs = {
+  life: { name:'生活程序', description:'处理日常生活，让生活归位。', rule:'物归论', text:'物有其位，事有其序。做完之后归位。' },
+  work: { name:'工作程序', description:'把今天最重要的工作做好，形成稳定产出。', rule:'砍柴论', text:'只看眼前这一斧。当前程序就是当前世界。' },
+  learning: { name:'学习成长程序', description:'持续积累知识、能力与判断力。', rule:'积累论', text:'不求一日之功，只求持续积累。' },
+  education: { name:'教育程序', description:'陪伴孩子成长，完成父母应该承担的责任。', rule:'相处论', text:'关系不是管理，而是相处。' },
+  body: { name:'身体健康程序', description:'维护身体这个长期运行的基础系统。', rule:'复利论', text:'小行动长期重复，最终形成复利。' }
+};
+let currentProgram = 'life';
 const today = new Date();
 const dateKey = toDateKey(today);
 const key = 'life-os-v04-' + dateKey;
 const historyKey = 'life-os-history-v04';
 const saved = JSON.parse(localStorage.getItem(key) || '{}');
-saved.fixed ??= fixedDefaults.map(text => ({ text, done: false }));
+saved.fixed ??= fixedDefaults.map(text => ({ text, done: false, program:'life' }));
 saved.extra ??= [];
 saved.metrics ??= {};
 const history = JSON.parse(localStorage.getItem(historyKey) || '{}');
-
 const fixedEl = document.querySelector('#fixedTasks');
 const extraEl = document.querySelector('#extraTasks');
-
-function toDateKey(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function getRecord(date) {
-  return history[toDateKey(date)] || null;
-}
-
-function save() {
-  localStorage.setItem(key, JSON.stringify(saved));
-  const all = [...saved.fixed, ...saved.extra];
-  history[dateKey] = {
-    completed: all.filter(t => t.done).length,
-    total: all.length,
-    rate: all.length ? Math.round(all.filter(t => t.done).length / all.length * 100) : 0,
-    metrics: { ...saved.metrics }
-  };
-  localStorage.setItem(historyKey, JSON.stringify(history));
-}
-
-function renderTasks() {
-  fixedEl.innerHTML = '';
-  extraEl.innerHTML = '';
-  saved.fixed.forEach((task, index) => fixedEl.appendChild(createTaskRow(task, false, index)));
-  saved.extra.forEach((task, index) => extraEl.appendChild(createTaskRow(task, true, index)));
-  updateRate();
-  renderHistory();
-  renderDashboard(currentDays);
-}
-
-function createTaskRow(task, isExtra, index) {
-  const row = document.createElement('div');
-  row.className = 'task' + (task.done ? ' done' : '');
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.checked = task.done;
-  checkbox.addEventListener('change', () => {
-    task.done = checkbox.checked;
-    save();
-    renderTasks();
-  });
-  const text = document.createElement('span');
-  text.textContent = task.text;
-  const actions = document.createElement('div');
-  actions.className = 'task-actions';
-  const edit = document.createElement('button');
-  edit.className = 'icon-button';
-  edit.textContent = '编辑';
-  edit.addEventListener('click', () => {
-    const next = prompt('修改任务：', task.text);
-    if (!next?.trim()) return;
-    task.text = next.trim();
-    save();
-    renderTasks();
-  });
-  actions.append(edit);
-  if (isExtra) {
-    const remove = document.createElement('button');
-    remove.className = 'icon-button danger';
-    remove.textContent = '删除';
-    remove.addEventListener('click', () => {
-      saved.extra.splice(index, 1);
-      save();
-      renderTasks();
-    });
-    actions.append(remove);
-  }
-  row.append(checkbox, text, actions);
-  return row;
-}
-
-function updateRate() {
-  const all = [...saved.fixed, ...saved.extra];
-  const completed = all.filter(t => t.done).length;
-  const rate = all.length ? Math.round(completed / all.length * 100) : 0;
-  document.querySelector('#rate').textContent = rate + '%';
-  document.querySelector('#completedCount').textContent = `${completed}/${all.length}`;
-  document.querySelector('#progressBar').style.width = rate + '%';
-  document.querySelector('#streak').textContent = calculateStreak();
-}
-
-function calculateStreak() {
-  let streak = 0;
-  const cursor = new Date(today);
-  while (true) {
-    const record = getRecord(cursor);
-    if (!record || record.rate < 100) break;
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
-}
-
-function renderHistory() {
-  const el = document.querySelector('#historyList');
-  el.innerHTML = '';
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const item = getRecord(d);
-    const row = document.createElement('div');
-    row.className = 'history-row';
-    const label = document.createElement('span');
-    label.textContent = i === 0 ? '今天' : new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric' }).format(d);
-    const value = document.createElement('strong');
-    value.textContent = item ? `${item.rate}%` : '—';
-    const detail = document.createElement('small');
-    detail.textContent = item ? `${item.completed}/${item.total}` : '未记录';
-    row.append(label, value, detail);
-    el.appendChild(row);
-  }
-}
-
-let currentDays = 7;
-
-function collectRecords(days) {
-  const records = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    records.push({ date: d, record: getRecord(d) });
-  }
-  return records;
-}
-
-function average(values) {
-  const valid = values.filter(v => Number.isFinite(v));
-  return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
-}
-
-function renderDashboard(days) {
-  currentDays = days;
-  const records = collectRecords(days);
-  const rates = records.map(x => x.record?.rate).filter(Number.isFinite);
-  const readings = records.map(x => Number(x.record?.metrics?.reading)).filter(Number.isFinite);
-  const phones = records.map(x => Number(x.record?.metrics?.phone)).filter(Number.isFinite);
-  const sleeps = records.map(x => Number(x.record?.metrics?.sleep)).filter(Number.isFinite);
-
-  document.querySelector('#summaryRange').textContent = `最近 ${days} 天`;
-  document.querySelector('#avgRate').textContent = average(rates) === null ? '—' : Math.round(average(rates)) + '%';
-  document.querySelector('#avgReading').textContent = average(readings) === null ? '—' : average(readings).toFixed(1) + 'h';
-  document.querySelector('#avgPhone').textContent = average(phones) === null ? '—' : average(phones).toFixed(1) + 'h';
-  document.querySelector('#avgSleep').textContent = average(sleeps) === null ? '—' : average(sleeps).toFixed(1) + 'h';
-
-  const chart = document.querySelector('#trendChart');
-  chart.innerHTML = '';
-  const maxRate = 100;
-  records.forEach(({ date, record }) => {
-    const column = document.createElement('div');
-    column.className = 'chart-column';
-    const bar = document.createElement('div');
-    bar.className = 'chart-bar';
-    bar.style.height = `${record ? Math.max(record.rate, 4) : 4}%`;
-    bar.title = record ? `${toDateKey(date)}：${record.rate}%` : `${toDateKey(date)}：未记录`;
-    const label = document.createElement('small');
-    label.textContent = days <= 7 ? (date.getMonth() + 1) + '/' + date.getDate() : (date.getDate());
-    column.append(bar, label);
-    chart.appendChild(column);
-  });
-}
-
-document.querySelector('#addTask').addEventListener('click', () => {
-  if (saved.extra.length >= 8) return alert('额外任务最多 8 项。');
-  const text = prompt('输入额外任务：');
-  if (!text?.trim()) return;
-  saved.extra.push({ text: text.trim(), done: false });
-  save();
-  renderTasks();
-});
-
-['thinking', 'indulgence', 'reading', 'phone', 'sleep'].forEach(id => {
-  const input = document.querySelector('#' + id);
-  input.value = saved.metrics[id] ?? '';
-  input.addEventListener('input', () => {
-    saved.metrics[id] = input.value;
-    save();
-    renderHistory();
-    renderDashboard(currentDays);
-  });
-});
-
-document.querySelectorAll('.range').forEach(button => {
-  button.addEventListener('click', () => {
-    document.querySelectorAll('.range').forEach(b => b.classList.remove('active'));
-    button.classList.add('active');
-    renderDashboard(Number(button.dataset.days));
-  });
-});
-
-document.querySelector('#resetToday').addEventListener('click', () => {
-  if (!confirm('确定清空今天所有任务完成状态和额外任务吗？')) return;
-  saved.fixed = fixedDefaults.map(text => ({ text, done: false }));
-  saved.extra = [];
-  saved.metrics = {};
-  save();
-  ['thinking', 'indulgence', 'reading', 'phone', 'sleep'].forEach(id => {
-    document.querySelector('#' + id).value = '';
-  });
-  renderTasks();
-});
-
-document.querySelector('#date').textContent = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'full' }).format(today);
-renderTasks();
-save();
+function toDateKey(date) { const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,'0'), d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; }
+function getRecord(date) { return history[toDateKey(date)] || null; }
+function save() { localStorage.setItem(key,JSON.stringify(saved)); const all=[...saved.fixed,...saved.extra]; history[dateKey]={completed:all.filter(t=>t.done).length,total:all.length,rate:all.length?Math.round(all.filter(t=>t.done).length/all.length*100):0,metrics:{...saved.metrics}}; localStorage.setItem(historyKey,JSON.stringify(history)); }
+function createTaskRow(task,isExtra,index) { const row=document.createElement('div'); row.className='task'+(task.done?' done':''); const checkbox=document.createElement('input'); checkbox.type='checkbox'; checkbox.checked=task.done; checkbox.addEventListener('change',()=>{task.done=checkbox.checked;save();renderTasks();}); const text=document.createElement('span'); text.textContent=task.text; const actions=document.createElement('div'); actions.className='task-actions'; const edit=document.createElement('button'); edit.className='icon-button'; edit.textContent='编辑'; edit.addEventListener('click',()=>{const next=prompt('修改任务：',task.text);if(!next?.trim())return;task.text=next.trim();save();renderTasks();}); actions.append(edit); if(isExtra){const remove=document.createElement('button');remove.className='icon-button danger';remove.textContent='删除';remove.addEventListener('click',()=>{saved.extra.splice(index,1);save();renderTasks();});actions.append(remove);} row.append(checkbox,text,actions); return row; }
+function renderTasks(){ fixedEl.innerHTML='';extraEl.innerHTML='';saved.fixed.filter(t=>t.program===currentProgram).forEach((t,i)=>fixedEl.appendChild(createTaskRow(t,false,i)));saved.extra.filter(t=>t.program===currentProgram).forEach((t,i)=>extraEl.appendChild(createTaskRow(t,true,i)));updateRate();renderHistory();renderDashboard(currentDays);updateProgramUI(); }
+function updateRate(){const all=[...saved.fixed,...saved.extra];const completed=all.filter(t=>t.done).length;const rate=all.length?Math.round(completed/all.length*100):0;document.querySelector('#rate').textContent=rate+'%';document.querySelector('#completedCount').textContent=`${completed}/${all.length}`;document.querySelector('#progressBar').style.width=rate+'%';document.querySelector('#streak').textContent=calculateStreak();const pAll=[...saved.fixed,...saved.extra].filter(t=>t.program===currentProgram);document.querySelector('#programCompleted').textContent=pAll.filter(t=>t.done).length+'/'+pAll.length;}
+function calculateStreak(){let streak=0,cursor=new Date(today);while(true){const r=getRecord(cursor);if(!r||r.rate<100)break;streak++;cursor.setDate(cursor.getDate()-1);}return streak;}
+function renderHistory(){const el=document.querySelector('#historyList');el.innerHTML='';for(let i=0;i<7;i++){const d=new Date(today);d.setDate(today.getDate()-i);const item=getRecord(d);const row=document.createElement('div');row.className='history-row';const label=document.createElement('span');label.textContent=i===0?'今天':new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric'}).format(d);const value=document.createElement('strong');value.textContent=item?`${item.rate}%`:'—';const detail=document.createElement('small');detail.textContent=item?`${item.completed}/${item.total}`:'未记录';row.append(label,value,detail);el.appendChild(row);}}
+let currentDays=7;
+function collectRecords(days){const records=[];for(let i=days-1;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);records.push({date:d,record:getRecord(d)});}return records;}
+function average(values){const valid=values.filter(v=>Number.isFinite(v));return valid.length?valid.reduce((a,b)=>a+b,0)/valid.length:null;}
+function renderDashboard(days){currentDays=days;const records=collectRecords(days);const rates=records.map(x=>x.record?.rate).filter(Number.isFinite);const readings=records.map(x=>Number(x.record?.metrics?.reading)).filter(Number.isFinite);const phones=records.map(x=>Number(x.record?.metrics?.phone)).filter(Number.isFinite);const sleeps=records.map(x=>Number(x.record?.metrics?.sleep)).filter(Number.isFinite);document.querySelector('#summaryRange').textContent=`最近 ${days} 天`;document.querySelector('#avgRate').textContent=average(rates)===null?'—':Math.round(average(rates))+'%';document.querySelector('#avgReading').textContent=average(readings)===null?'—':average(readings).toFixed(1)+'h';document.querySelector('#avgPhone').textContent=average(phones)===null?'—':average(phones).toFixed(1)+'h';document.querySelector('#avgSleep').textContent=average(sleeps)===null?'—':average(sleeps).toFixed(1)+'h';const chart=document.querySelector('#trendChart');chart.innerHTML='';records.forEach(({date,record})=>{const column=document.createElement('div');column.className='chart-column';const bar=document.createElement('div');bar.className='chart-bar';bar.style.height=`${record?Math.max(record.rate,4):4}%`;bar.title=record?`${toDateKey(date)}：${record.rate}%`:`${toDateKey(date)}：未记录`;const label=document.createElement('small');label.textContent=days<=7?(date.getMonth()+1)+'/'+date.getDate():date.getDate();column.append(bar,label);chart.appendChild(column);});}
+function updateProgramUI(){const p=programs[currentProgram];document.querySelector('#programTitle').textContent=p.name;document.querySelector('#programDescription').textContent=p.description;document.querySelector('#ruleTitle').textContent=p.rule;document.querySelector('#ruleText').textContent=p.text;document.querySelector('#taskTitle').textContent=p.name+' · 今日任务';document.querySelectorAll('.program-tab').forEach(b=>b.classList.toggle('active',b.dataset.program===currentProgram));}
+function renderProgramNav(){const nav=document.querySelector('#programNav');nav.innerHTML='';Object.entries(programs).forEach(([id,p])=>{const b=document.createElement('button');b.className='program-tab';b.dataset.program=id;b.textContent=p.name;b.addEventListener('click',()=>{currentProgram=id;renderTasks();});nav.appendChild(b);});}
+document.querySelector('#addTask').addEventListener('click',()=>{if(saved.extra.length>=8)return alert('额外任务最多 8 项。');const text=prompt('输入额外任务：');if(!text?.trim())return;saved.extra.push({text:text.trim(),done:false,program:currentProgram});save();renderTasks();});
+['thinking','indulgence','reading','phone','sleep'].forEach(id=>{const input=document.querySelector('#'+id);input.value=saved.metrics[id]??'';input.addEventListener('input',()=>{saved.metrics[id]=input.value;save();renderHistory();renderDashboard(currentDays);});});
+document.querySelectorAll('.range').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.range').forEach(b=>b.classList.remove('active'));button.classList.add('active');renderDashboard(Number(button.dataset.days));}));
+document.querySelector('#resetToday').addEventListener('click',()=>{if(!confirm('确定清空今天所有任务完成状态和额外任务吗？'))return;saved.fixed=fixedDefaults.map(text=>({text,done:false,program:'life'}));saved.extra=[];saved.metrics={};save();['thinking','indulgence','reading','phone','sleep'].forEach(id=>document.querySelector('#'+id).value='');renderTasks();});
+document.querySelector('#date').textContent=new Intl.DateTimeFormat('zh-CN',{dateStyle:'full'}).format(today);renderProgramNav();renderTasks();save();
