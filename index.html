@@ -10,12 +10,18 @@
   <main class="app">
     <header class="header">
       <div>
-        <p class="eyebrow">LIFE OS</p>
+        <p class="eyebrow">LIFE OS / V0.3</p>
         <h1>万事归位，各行其道</h1>
         <p id="date"></p>
       </div>
       <div class="score"><strong id="rate">0%</strong><span>今日完成率</span></div>
     </header>
+
+    <section class="stats">
+      <div class="stat"><span>已完成</span><strong id="completedCount">0/8</strong></div>
+      <div class="stat"><span>连续满完成</span><strong id="streak">0</strong><small>天</small></div>
+      <div class="stat wide"><span>今日进度</span><div class="progress"><i id="progressBar"></i></div></div>
+    </section>
 
     <section class="grid">
       <div class="card tasks-card">
@@ -28,18 +34,19 @@
 
       <div class="side">
         <div class="card">
-          <div class="card-title"><h2>今日状态</h2></div>
-          <label>思维时间 <input id="thinking" type="number" min="0" step="0.5" placeholder="小时" /></label>
-          <label>放纵时间 <input id="indulgence" type="number" min="0" step="0.5" placeholder="小时" /></label>
-          <label>阅读时间 <input id="reading" type="number" min="0" step="0.5" placeholder="小时" /></label>
-          <label>手机时间 <input id="phone" type="number" min="0" step="0.5" placeholder="小时" /></label>
-          <label>睡眠时间 <input id="sleep" type="number" min="0" step="0.5" placeholder="小时" /></label>
+          <div class="card-title"><h2>今日状态</h2><span>小时</span></div>
+          <label>思维时间 <input id="thinking" type="number" min="0" step="0.5" placeholder="0" /></label>
+          <label>放纵时间 <input id="indulgence" type="number" min="0" step="0.5" placeholder="0" /></label>
+          <label>阅读时间 <input id="reading" type="number" min="0" step="0.5" placeholder="0" /></label>
+          <label>手机时间 <input id="phone" type="number" min="0" step="0.5" placeholder="0" /></label>
+          <label>睡眠时间 <input id="sleep" type="number" min="0" step="0.5" placeholder="0" /></label>
         </div>
         <div class="card principle">
           <p class="eyebrow">TODAY'S RULE</p>
           <h2>洗衣论</h2>
           <p>先做眼前该做的事。行动优先，思考服务于行动。</p>
         </div>
+        <button id="resetToday" class="reset">重置今天</button>
       </div>
     </section>
   </main>
