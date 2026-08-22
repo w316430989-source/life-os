@@ -3,9 +3,10 @@ const fixedDefaults = [
   '20 分钟散步', '阅读 1 小时', '控制短视频时间', '23:30 睡觉'
 ];
 
-const dateKey = new Date().toISOString().slice(0, 10);
-const key = 'life-os-v03-' + dateKey;
-const historyKey = 'life-os-history-v03';
+const today = new Date();
+const dateKey = toDateKey(today);
+const key = 'life-os-v04-' + dateKey;
+const historyKey = 'life-os-history-v04';
 const saved = JSON.parse(localStorage.getItem(key) || '{}');
 saved.fixed ??= fixedDefaults.map(text => ({ text, done: false }));
 saved.extra ??= [];
@@ -15,13 +16,21 @@ const history = JSON.parse(localStorage.getItem(historyKey) || '{}');
 const fixedEl = document.querySelector('#fixedTasks');
 const extraEl = document.querySelector('#extraTasks');
 
+function toDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function save() {
   localStorage.setItem(key, JSON.stringify(saved));
   const all = [...saved.fixed, ...saved.extra];
   history[dateKey] = {
     completed: all.filter(t => t.done).length,
     total: all.length,
-    rate: all.length ? Math.round(all.filter(t => t.done).length / all.length * 100) : 0
+    rate: all.length ? Math.round(all.filter(t => t.done).length / all.length * 100) : 0,
+    metrics: { ...saved.metrics }
   };
   localStorage.setItem(historyKey, JSON.stringify(history));
 }
@@ -32,6 +41,7 @@ function renderTasks() {
   saved.fixed.forEach((task, index) => fixedEl.appendChild(createTaskRow(task, false, index)));
   saved.extra.forEach((task, index) => extraEl.appendChild(createTaskRow(task, true, index)));
   updateRate();
+  renderHistory();
 }
 
 function createTaskRow(task, isExtra, index) {
@@ -87,14 +97,35 @@ function updateRate() {
 
 function calculateStreak() {
   let streak = 0;
-  const cursor = new Date();
+  const cursor = new Date(today);
   while (true) {
-    const d = cursor.toISOString().slice(0, 10);
+    const d = toDateKey(cursor);
     if (!history[d] || history[d].rate < 100) break;
     streak++;
     cursor.setDate(cursor.getDate() - 1);
   }
   return streak;
+}
+
+function renderHistory() {
+  const el = document.querySelector('#historyList');
+  el.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const keyDate = toDateKey(d);
+    const item = history[keyDate];
+    const row = document.createElement('div');
+    row.className = 'history-row';
+    const label = document.createElement('span');
+    label.textContent = i === 0 ? '今天' : new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric' }).format(d);
+    const value = document.createElement('strong');
+    value.textContent = item ? `${item.rate}%` : '—';
+    const detail = document.createElement('small');
+    detail.textContent = item ? `${item.completed}/${item.total}` : '未记录';
+    row.append(label, value, detail);
+    el.appendChild(row);
+  }
 }
 
 document.querySelector('#addTask').addEventListener('click', () => {
@@ -112,6 +143,7 @@ document.querySelector('#addTask').addEventListener('click', () => {
   input.addEventListener('input', () => {
     saved.metrics[id] = input.value;
     save();
+    renderHistory();
   });
 });
 
@@ -127,6 +159,6 @@ document.querySelector('#resetToday').addEventListener('click', () => {
   renderTasks();
 });
 
-document.querySelector('#date').textContent = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'full' }).format(new Date());
+document.querySelector('#date').textContent = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'full' }).format(today);
 renderTasks();
 save();
